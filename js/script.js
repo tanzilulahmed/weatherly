@@ -9,8 +9,8 @@ const wrapper = document.querySelector(".wrapper"),
   wIcon = weatherPart.querySelector("img"),
   arrowBack = wrapper.querySelector("header i");
 
-let api;
-let apiKey = "b190a0605344cc4f3af08d0dd473dd25";
+
+let apiKey = "1044ac47fbc04ab19c8111820241510";
 
 const weatherChartCtx = document.getElementById("weatherChart").getContext("2d");
 let weatherChart;
@@ -65,16 +65,13 @@ locationBtn.addEventListener("click", () => {
 
 // Function to request weather data
 function requestApi(city) {
-  api = `https://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&appid=${apiKey}`;
-  fetchData();
+  const api = `https://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${city}`;
+  fetchData(api);
+
+  displayMap(latitude, longitude);
 }
 
-// Function to handle geolocation success
-function onSuccess(position) {
-  const { latitude, longitude } = position.coords;
-  api = `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&units=metric&appid=${apiKey}`;
-  fetchData();
-}
+
 
 // Function to handle geolocation error
 function onError(error) {
@@ -84,22 +81,22 @@ function onError(error) {
 }
 
 // Function to fetch weather data from API
-function fetchData() {
+function fetchData(api) {
   infoTxt.innerText = "Fetching weather details...";
   infoTxt.classList.add("pending");
 
   fetch(api)
     .then((res) => res.json())
     .then((result) => {
-      if (result.cod && result.cod === "404") {
+      if (result.error) {
         infoTxt.innerText = `${inputField.value} is not a valid city name`;
         infoTxt.classList.replace("pending", "error");
         clearWeatherData();
       } else {
-        clearWeatherData(); // Clear previous weather and forecast data
+        clearWeatherData();
         weatherDetails(result);
-        fetchForecast(result.coord.lat, result.coord.lon); // Fetch 7-day forecast
-        fetchHourlyForecast(result.coord.lat, result.coord.lon); // Fetch hourly forecast
+        fetchForecast(result.location.lat, result.location.lon); 
+        forecastSection.removeAttribute("hidden"); // Ensure forecast section is visible
       }
     })
     .catch(() => {
@@ -113,9 +110,8 @@ function fetchData() {
 
 // Function to display weather details
 function weatherDetails(info) {
-  const { name: city, sys: { country }, weather: [{ description, id }], main: { temp, feels_like, humidity }, wind: { speed }, dt } = info;
-  
-  const weatherDate = new Date(dt * 1000).toLocaleString('en', {
+  const { name: city, country, temp_c: temp, feelslike_c: feels_like, humidity, wind_kph: speed, condition: { text: description, icon } } = info.current;
+  const weatherDate = new Date(info.location.localtime).toLocaleString('en', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
@@ -125,13 +121,13 @@ function weatherDetails(info) {
     hour12: true
   });
 
-  wIcon.src = getWeatherIcon(id);
+  wIcon.src = icon;
   weatherPart.querySelector(".temp .numb").innerText = Math.round(temp);
   weatherPart.querySelector(".weather").innerText = description;
   weatherPart.querySelector(".location span").innerText = `${city}, ${country}`;
   weatherPart.querySelector(".temp .numb-2").innerText = Math.round(feels_like);
   weatherPart.querySelector(".humidity span").innerText = `${humidity}%`;
-  weatherPart.querySelector(".wind span").innerText = `${speed} m/s`;
+  weatherPart.querySelector(".wind span").innerText = `${speed} kph`;
   weatherPart.querySelector(".date-time").innerText = weatherDate;
 
   infoTxt.classList.remove("pending", "error");
@@ -207,174 +203,3 @@ function updateForecast(dailyData) {
     forecastDetails.appendChild(forecastCard);
   });
 }
-
-// Function to update hourly forecast
-function updateHourlyForecast(hourlyData) {
-  const labels = [];
-  const data = [];
-
-  hourlyData.forEach((hour) => {
-    const { dt, temp } = hour;
-    const hourOfDay = new Date(dt * 1000).toLocaleTimeString('en', { hour: 'numeric', hour12: true });
-    labels.push(hourOfDay);
-    data.push(temp);
-  });
-
-  createWeatherChart(labels, data); // Create or update hourly weather chart
-}
-
-// Function to clear weather data
-function clearWeatherData() {
-  wIcon.src = "";
-  weatherPart.querySelector(".temp .numb").innerText = "";
-  weatherPart.querySelector(".weather").innerText = "";
-  weatherPart.querySelector(".location span").innerText = "";
-  weatherPart.querySelector(".temp .numb-2").innerText = "";
-  weatherPart.querySelector(".humidity span").innerText = "";
-  weatherPart.querySelector(".wind span").innerText = "";
-  weatherPart.querySelector(".date-time").innerText = "";
-  infoTxt.innerText = "";
-  forecastSection.style.display = "block"; // Ensure forecast section is visible
-  clearForecast(); // Clear previous forecast data
-  clearHourlyForecast(); // Clear previous hourly forecast data
-}
-
-
-// Function to clear forecast data
-function clearForecast() {
-  forecastDetails.innerHTML = ""; // Clear daily forecast details
-}
-
-// Function to clear hourly forecast data
-function clearHourlyForecast() {
-  if (weatherChart) {
-    weatherChart.destroy();
-  }
-}
-
-// Function to get weather icon based on weather id
-function getWeatherIcon(weatherId) {
-  if (weatherId === 800) {
-    return "icons/clear.svg";
-  } else if (weatherId >= 200 && weatherId <= 232) {
-    return "icons/storm.svg";
-  } else if (weatherId >= 600 && weatherId <= 622) {
-    return "icons/snow.svg";
-  } else if (weatherId >= 701 && weatherId <= 781) {
-    return "icons/haze.svg";
-  } else if (weatherId >= 801 && weatherId <= 804) {
-    return "icons/cloud.svg";
-  } else if ((weatherId >= 500 && weatherId <= 531) || (weatherId >= 300 && weatherId <= 321)) {
-    return "icons/rain.svg";
-  } else {
-    return "icons/unknown.svg";
-  }
-}
-
-// Event listener for back button
-arrowBack.addEventListener("click", () => {
-  wrapper.classList.remove("active");
-  clearWeatherData();
-});
-
-// Change Color Theme
-var isDark = false;
-const colors = [
-  "hsl(345, 80%, 50%)",
-  "hsl(100, 80%, 50%)",
-  "hsl(200, 80%, 50%)",
-  "hsl(227, 66%, 55%)",
-  "hsl(26, 80%, 50%)",
-  "hsl(44, 90%, 51%)",
-  "hsl(280, 100%, 65%)",
-  "hsl(480, 100%, 25%)",
-  "hsl(180, 100%, 25%)",
-];
-const colorBtns = document.querySelectorAll(".theme-color");
-const darkModeBtn = document.querySelector(".dark-mode-btn");
-
-darkModeBtn.addEventListener("click", () => {
-  isDark = !isDark;
-  changeTheme(isDark ? "#000" : colors[3]);
-});
-
-colorBtns.forEach((btn, index) => {
-  btn.style.backgroundColor = colors[index];
-  btn.addEventListener("click", () => {
-    changeTheme(btn.style.backgroundColor);
-  });
-});
-
-function changeTheme(color) {
-  document.documentElement.style.setProperty("--primary-color", color);
-  saveTheme(color);
-}
-
-function saveTheme(color) {
-  localStorage.setItem("theme", color);
-}
-
-function getTheme() {
-  const theme = localStorage.getItem("theme");
-  if (theme) {
-    changeTheme(theme);
-  }
-}
-
-getTheme(); // Initialize theme on page load
-// Function to display the map with the user's location
-function displayMap(latitude, longitude) {
-  // Create the map
-  const map = L.map('map').setView([latitude, longitude], 13); // Set the view to the user's location
-
-  // Load and display tile layers
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-  }).addTo(map);
-
-  // Add a marker for the user's location
-  L.marker([latitude, longitude]).addTo(map)
-    .bindPopup('You are here!')
-    .openPopup();
-}
-
-// Function to handle geolocation success
-function onSuccess(position) {
-  const { latitude, longitude } = position.coords;
-  api = `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&units=metric&appid=${apiKey}`;
-  fetchData();
-  
-  // Display the map with user's location
-  displayMap(latitude, longitude); // Call the function to display the map
-}
-
-// Function to display the map with the user's location and weather map
-function displayMap(latitude, longitude) {
-  // Create the map and set the view to the user's location
-  const map = L.map('map').setView([latitude, longitude], 13);
-
-  // Load and display OpenStreetMap tile layers
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-  }).addTo(map);
-
-  // Add OpenWeatherMap weather tile layer
-  L.tileLayer(`https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${apiKey}`, {
-    maxZoom: 19,
-    attribution: '&copy; <a href="https://openweathermap.org/">OpenWeatherMap</a>'
-  }).addTo(map);
-
-  // Add a marker for the user's location
-  L.marker([latitude, longitude]).addTo(map)
-    .bindPopup('You are here!')
-    .openPopup();
-}
-
-
-
-
-
-
-
