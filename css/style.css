@@ -240,6 +240,11 @@ header i {
   max-width: 120px;
 }
 
+.logo2{
+    max-width: 200px;
+    margin:20px;    
+}
+
 .weather-part .temp {
   display: flex;
   margin: 5px;
@@ -343,6 +348,7 @@ header i {
 .color-palette {
   position: absolute;
   display: flex;
+  top: 0;
   flex-direction: column;
   justify-content: center;
   margin: 12px;
@@ -374,7 +380,7 @@ header i {
 .dark-mode {
   position: absolute;
   top: 12px;
-  right: 12px;
+  left: 12px;
   background: rgba(255, 255, 255, 0.25);
   box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
   backdrop-filter: blur(4px);
@@ -417,36 +423,14 @@ header i {
 }
 
 /* Media Queries */
-@media only screen and (max-width: 436px) {
-  .wrapper {
-    max-width: 90%;
-    min-width: 90%;
-  }
 
-  .color-palette {
-    max-width: 90%;
-    min-width: 90%;
-  }
-
-  .color-palette .theme-color {
-    width: 22px;
-    height: 22px;
-  }
-}
 
 @media only screen and (max-width: 636px) {
   .color-palette {
-    display: flex;
-    flex-direction: row;
-    justify-content: center;
-    left: 50%;
-    transform: translateX(-50%);
-    bottom: 0;
-    padding: 0;
-    margin: 0;
-    width: 400px;
-    margin-bottom: 16px;
+    display: none;
+
   }
+  
 
   .color-palette .theme-color {
     margin-top: 10px;

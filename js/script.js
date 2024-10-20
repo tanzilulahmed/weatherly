@@ -9,20 +9,18 @@ const wrapper = document.querySelector(".wrapper"),
   wIcon = weatherPart.querySelector("img"),
   arrowBack = wrapper.querySelector("header i");
 
-
-let apiKey = "1044ac47fbc04ab19c8111820241510";
-
-const weatherChartCtx = document.getElementById("weatherChart").getContext("2d");
+let apiKey = "1044ac47fbc04ab19c8111820241510"; 
 let weatherChart;
 
 // Function to create or update weather chart
+const weatherChartCtx = document.getElementById("weatherChart").getContext("2d");
 function createWeatherChart(labels, data) {
   if (weatherChart) {
     weatherChart.destroy();
   }
 
   weatherChart = new Chart(weatherChartCtx, {
-    type: "line", // Change chart type as needed (line, bar, etc.)
+    type: "line", // Line chart for temperature over time
     data: {
       labels: labels,
       datasets: [{
@@ -38,17 +36,15 @@ function createWeatherChart(labels, data) {
       responsive: true,
       maintainAspectRatio: false,
       scales: {
-        yAxes: [{
-          ticks: {
-            beginAtZero: true
-          }
-        }]
+        y: {
+          beginAtZero: true
+        }
       }
     }
   });
 }
 
-// Event listeners
+// Event listeners for input
 inputField.addEventListener("keyup", (e) => {
   if (e.key === "Enter" && inputField.value.trim() !== "") {
     requestApi(inputField.value.trim());
@@ -63,15 +59,21 @@ locationBtn.addEventListener("click", () => {
   }
 });
 
-// Function to request weather data
+// Function to request weather data based on city name
 function requestApi(city) {
   const api = `https://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${city}`;
   fetchData(api);
-
-  displayMap(latitude, longitude);
 }
 
+// Function to handle geolocation success
+function onSuccess(position) {
+  const { latitude, longitude } = position.coords;
+  const api = `https://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${latitude},${longitude}`;
+  fetchData(api);
 
+  // Display the map with user's location
+  displayMap(latitude, longitude);
+}
 
 // Function to handle geolocation error
 function onError(error) {
@@ -80,7 +82,7 @@ function onError(error) {
   clearWeatherData();
 }
 
-// Function to fetch weather data from API
+// Fetch data from API
 function fetchData(api) {
   infoTxt.innerText = "Fetching weather details...";
   infoTxt.classList.add("pending");
@@ -105,8 +107,6 @@ function fetchData(api) {
       clearWeatherData();
     });
 }
-
-
 
 // Function to display weather details
 function weatherDetails(info) {
@@ -136,20 +136,14 @@ function weatherDetails(info) {
   wrapper.classList.add("active");
 }
 
-// Function to fetch daily forecast data
+// Fetch 7-day forecast data
 function fetchForecast(latitude, longitude) {
-  const forecastApi = `https://api.openweathermap.org/data/2.5/onecall?lat=${latitude}&lon=${longitude}&exclude=current,minutely,hourly&units=metric&appid=${apiKey}`;
-  
+  const forecastApi = `https://api.weatherapi.com/v1/forecast.json?key=${apiKey}&q=${latitude},${longitude}&days=7`;
+
   fetch(forecastApi)
     .then((res) => res.json())
     .then((data) => {
-      if (data.cod && data.cod === "404") {
-        infoTxt.innerText = "Forecast data not available";
-        infoTxt.classList.replace("pending", "error");
-        clearForecast();
-      } else {
-        updateForecast(data.daily.slice(1, 8)); // Update forecast for next 7 days
-      }
+      updateForecast(data.forecast.forecastday);
     })
     .catch(() => {
       infoTxt.innerText = "Forecast data not available";
@@ -158,48 +152,112 @@ function fetchForecast(latitude, longitude) {
     });
 }
 
-
-// Function to fetch hourly forecast data
-function fetchHourlyForecast(latitude, longitude) {
-  const hourlyForecastApi = `https://api.openweathermap.org/data/2.5/onecall?lat=${latitude}&lon=${longitude}&exclude=current,daily,minutely&units=metric&appid=${apiKey}`;
-  
-  fetch(hourlyForecastApi)
-    .then((res) => res.json())
-    .then((data) => {
-      if (data.cod && data.cod === "404") {
-        infoTxt.innerText = "Hourly forecast data not available";
-        infoTxt.classList.replace("pending", "error");
-        clearHourlyForecast();
-      } else {
-        updateHourlyForecast(data.hourly.slice(0, 24)); // Update hourly forecast for next 24 hours
-      }
-    })
-    .catch(() => {
-      infoTxt.innerText = "Hourly forecast data not available";
-      infoTxt.classList.replace("pending", "error");
-      clearHourlyForecast();
-    });
-}
-
-// Function to update daily forecast
+// Update daily forecast
 function updateForecast(dailyData) {
-  forecastDetails.innerHTML = ""; // Clear previous forecast details
+  forecastDetails.innerHTML = ""; // Clear previous forecast
 
   dailyData.forEach((day) => {
-    const { dt, weather: [{ description, id }], temp: { max, min } } = day;
-    const dayOfWeek = new Date(dt * 1000).toLocaleDateString('en', { weekday: 'long' });
-    
+    const { date, day: { condition: { text, icon }, maxtemp_c, mintemp_c } } = day;
+    const dayOfWeek = new Date(date).toLocaleDateString('en', { weekday: 'long' });
+
     const forecastCard = document.createElement("div");
     forecastCard.classList.add("forecast-card");
     forecastCard.innerHTML = `
       <div class="forecast-day">${dayOfWeek}</div>
-      <img src="${getWeatherIcon(id)}" alt="Weather Icon" />
+      <img src="${icon}" alt="Weather Icon" />
       <div class="forecast-temp">
-        <span class="max-temp">${Math.round(max)}°C</span> / 
-        <span class="min-temp">${Math.round(min)}°C</span>
+        <span class="max-temp">${Math.round(maxtemp_c)}°C</span> / 
+        <span class="min-temp">${Math.round(mintemp_c)}°C</span>
       </div>
-      <div class="forecast-desc">${description}</div>
+      <div class="forecast-desc">${text}</div>
     `;
     forecastDetails.appendChild(forecastCard);
   });
 }
+
+// Display map with user's location and weather layer
+function displayMap(latitude, longitude) {
+  const map = L.map('map').setView([latitude, longitude], 13);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  L.tileLayer(`https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${apiKey}`, {
+    maxZoom: 19,
+    attribution: '&copy; OpenWeatherMap'
+  }).addTo(map);
+
+  L.marker([latitude, longitude]).addTo(map)
+    .bindPopup('You are here!')
+    .openPopup();
+}
+
+// Clear weather data and forecast
+function clearWeatherData() {
+  wIcon.src = "";
+  weatherPart.querySelector(".temp .numb").innerText = "";
+  weatherPart.querySelector(".weather").innerText = "";
+  weatherPart.querySelector(".location span").innerText = "";
+  weatherPart.querySelector(".temp .numb-2").innerText = "";
+  weatherPart.querySelector(".humidity span").innerText = "";
+  weatherPart.querySelector(".wind span").innerText = "";
+  weatherPart.querySelector(".date-time").innerText = "";
+  clearForecast(); 
+}
+
+function clearForecast() {
+  forecastDetails.innerHTML = ""; // Clear forecast section
+}
+// Event listener for back button
+arrowBack.addEventListener("click", () => {
+  wrapper.classList.remove("active");
+  clearWeatherData();
+});
+
+// Change Color Theme
+var isDark = false;
+const colors = [
+  "hsl(345, 80%, 50%)",
+  "hsl(100, 80%, 50%)",
+  "hsl(200, 80%, 50%)",
+  "hsl(227, 66%, 55%)",
+  "hsl(26, 80%, 50%)",
+  "hsl(44, 90%, 51%)",
+  "hsl(280, 100%, 65%)",
+  "hsl(480, 100%, 25%)",
+  "hsl(180, 100%, 25%)",
+];
+const colorBtns = document.querySelectorAll(".theme-color");
+const darkModeBtn = document.querySelector(".dark-mode-btn");
+
+darkModeBtn.addEventListener("click", () => {
+  isDark = !isDark;
+  changeTheme(isDark ? "#000" : colors[3]);
+});
+
+colorBtns.forEach((btn, index) => {
+  btn.style.backgroundColor = colors[index];
+  btn.addEventListener("click", () => {
+    changeTheme(btn.style.backgroundColor);
+  });
+});
+
+function changeTheme(color) {
+  document.documentElement.style.setProperty("--primary-color", color);
+  saveTheme(color);
+}
+
+function saveTheme(color) {
+  localStorage.setItem("theme", color);
+}
+
+function getTheme() {
+  const theme = localStorage.getItem("theme");
+  if (theme) {
+    changeTheme(theme);
+  }
+}
+
+getTheme(); 
