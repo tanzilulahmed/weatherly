@@ -97,6 +97,8 @@ function fetchData(api) {
       } else {
         clearWeatherData();
         weatherDetails(result);
+        
+        
         fetchForecast(result.location.lat, result.location.lon); 
         forecastSection.removeAttribute("hidden"); // Ensure forecast section is visible
       }
@@ -110,7 +112,8 @@ function fetchData(api) {
 
 // Function to display weather details
 function weatherDetails(info) {
-  const { name: city, country, temp_c: temp, feelslike_c: feels_like, humidity, wind_kph: speed, condition: { text: description, icon } } = info.current;
+  const { temp_c: temp, feelslike_c: feels_like, humidity, wind_kph: speed, condition: { text: description, icon } } = info.current;
+  const {name: city, country} = info.location
   const weatherDate = new Date(info.location.localtime).toLocaleString('en', {
     weekday: 'long',
     year: 'numeric',
